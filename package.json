@@ -3,6 +3,23 @@
   "version": "0.0.1",
   "description": "Maps a TypeScript project's imports/exports into a graph and generates AI-agent-friendly documentation.",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/matthewlovestocode/ts-project-mapper.git"
+  },
+  "homepage": "https://github.com/matthewlovestocode/ts-project-mapper#readme",
+  "bugs": {
+    "url": "https://github.com/matthewlovestocode/ts-project-mapper/issues"
+  },
+  "keywords": [
+    "typescript",
+    "ast",
+    "dependency-graph",
+    "imports",
+    "exports",
+    "documentation",
+    "ai-agent"
+  ],
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -20,6 +37,9 @@
   ],
   "engines": {
     "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json && chmod +x dist/cli.js",
