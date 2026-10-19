@@ -1,14 +1,13 @@
-export interface ModuleNode {
-  filePath: string;
-  imports: string[];
-  exports: string[];
-}
+import path from "node:path";
+import { analyzeModule } from "./analyzeModule.js";
+import { discoverFiles } from "./discoverFiles.js";
+import type { ProjectMap } from "./types.js";
 
-export interface ProjectMap {
-  rootDir: string;
-  modules: ModuleNode[];
-}
+export * from "./types.js";
 
 export function mapProject(rootDir: string): ProjectMap {
-  return { rootDir, modules: [] };
+  const absoluteRoot = path.resolve(rootDir);
+  const files = discoverFiles(absoluteRoot);
+  const modules = files.map((filePath) => analyzeModule(filePath));
+  return { rootDir: absoluteRoot, modules };
 }
