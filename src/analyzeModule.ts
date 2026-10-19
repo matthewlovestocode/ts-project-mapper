@@ -48,20 +48,21 @@ function parseImportDeclaration(node: ts.ImportDeclaration, filePath: string): I
   };
 }
 
-function parseExportDeclaration(node: ts.ExportDeclaration): ExportInfo[] {
+function parseExportDeclaration(node: ts.ExportDeclaration, filePath: string): ExportInfo[] {
   const reExportFrom = node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier)
     ? node.moduleSpecifier.text
     : undefined;
+  const reExportResolvedPath = reExportFrom ? resolveImport(reExportFrom, filePath) : undefined;
   const isTypeOnly = node.isTypeOnly;
 
   if (!node.exportClause) {
     // export * from './x'
-    return [{ name: "*", isTypeOnly, reExportFrom }];
+    return [{ name: "*", isTypeOnly, reExportFrom, reExportResolvedPath }];
   }
 
   if (ts.isNamespaceExport(node.exportClause)) {
     // export * as ns from './x'
-    return [{ name: node.exportClause.name.text, isTypeOnly, reExportFrom }];
+    return [{ name: node.exportClause.name.text, isTypeOnly, reExportFrom, reExportResolvedPath }];
   }
 
   // export { a, b as c } [from './x']
@@ -69,6 +70,7 @@ function parseExportDeclaration(node: ts.ExportDeclaration): ExportInfo[] {
     name: element.name.text,
     isTypeOnly: isTypeOnly || element.isTypeOnly,
     reExportFrom,
+    reExportResolvedPath,
   }));
 }
 
@@ -119,7 +121,7 @@ export function analyzeModule(filePath: string): ModuleNode {
     if (ts.isImportDeclaration(node)) {
       imports.push(parseImportDeclaration(node, filePath));
     } else if (ts.isExportDeclaration(node)) {
-      exports.push(...parseExportDeclaration(node));
+      exports.push(...parseExportDeclaration(node, filePath));
     } else if (ts.isExportAssignment(node)) {
       exports.push({ name: "default", isTypeOnly: false });
     } else if (hasModifier(node, ts.SyntaxKind.ExportKeyword)) {

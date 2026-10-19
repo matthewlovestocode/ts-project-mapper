@@ -11,6 +11,7 @@ export interface ExportInfo {
   name: string;
   isTypeOnly: boolean;
   reExportFrom?: string;
+  reExportResolvedPath?: string | null;
 }
 
 export interface ModuleNode {
