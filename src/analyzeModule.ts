@@ -12,11 +12,13 @@ function scriptKindFor(filePath: string): ts.ScriptKind {
   return ts.ScriptKind.TS;
 }
 
+/** True if `node` has the given modifier keyword (e.g. `export`, `default`). */
 function hasModifier(node: ts.Node, kind: ts.SyntaxKind): boolean {
   const modifiers = ts.canHaveModifiers(node) ? ts.getModifiers(node) : undefined;
   return modifiers?.some((modifier) => modifier.kind === kind) ?? false;
 }
 
+/** Parses one `import ... from "..."` declaration, covering default/namespace/named forms. */
 function parseImportDeclaration(
   node: ts.ImportDeclaration,
   filePath: string,
@@ -35,8 +37,11 @@ function parseImportDeclaration(
   }
   if (clause?.namedBindings) {
     if (ts.isNamespaceImport(clause.namedBindings)) {
+      // import * as ns from "./x"
       namespaceImport = clause.namedBindings.name.text;
     } else if (ts.isNamedImports(clause.namedBindings)) {
+      // import { a, b as c } from "./x" — record the imported name, not the local alias,
+      // so this lines up with the name as it appears in the source module's exports.
       for (const element of clause.namedBindings.elements) {
         namedImports.push((element.propertyName ?? element.name).text);
       }
@@ -53,6 +58,7 @@ function parseImportDeclaration(
   };
 }
 
+/** Parses one `export { ... } [from "..."]` / `export * [as ns] from "..."` declaration. */
 function parseExportDeclaration(
   node: ts.ExportDeclaration,
   filePath: string,
@@ -74,7 +80,8 @@ function parseExportDeclaration(
     return [{ name: node.exportClause.name.text, isTypeOnly, reExportFrom, reExportResolvedPath }];
   }
 
-  // export { a, b as c } [from './x']
+  // export { a, b as c } [from './x'] — use the exported (post-`as`) name, since that's
+  // the name a consumer of this module would actually import.
   return node.exportClause.elements.map((element) => ({
     name: element.name.text,
     isTypeOnly: isTypeOnly || element.isTypeOnly,
@@ -91,10 +98,16 @@ function namesFromBindingName(bindingName: ts.BindingName): string[] {
   return [];
 }
 
+/**
+ * Parses a top-level declaration that carries its own `export` modifier directly
+ * (`export function foo() {}`, `export const x = 1`, `export interface Foo {}`, ...),
+ * as opposed to a separate `export { ... }` statement.
+ */
 function parseExportedDeclaration(node: ts.Node): ExportInfo[] {
   const isDefault = hasModifier(node, ts.SyntaxKind.DefaultKeyword);
 
   if (ts.isVariableStatement(node)) {
+    // export const a = 1, b = 2;
     return node.declarationList.declarations.flatMap((declaration) =>
       namesFromBindingName(declaration.name).map((name) => ({ name, isTypeOnly: false })),
     );
@@ -106,6 +119,8 @@ function parseExportedDeclaration(node: ts.Node): ExportInfo[] {
   }
 
   if (ts.isInterfaceDeclaration(node) || ts.isTypeAliasDeclaration(node) || ts.isEnumDeclaration(node)) {
+    // Interfaces and type aliases are erased at runtime, so they're marked type-only;
+    // enums are real runtime values, so they're not.
     const name = isDefault ? "default" : node.name.text;
     return [{ name, isTypeOnly: ts.isEnumDeclaration(node) ? false : true }];
   }
@@ -113,8 +128,20 @@ function parseExportedDeclaration(node: ts.Node): ExportInfo[] {
   return [];
 }
 
+/**
+ * Parses a single source file into its import/export graph node.
+ *
+ * Only scans top-level statements (via `forEachChild`) — imports/exports nested inside
+ * a function or namespace body aren't valid TypeScript module syntax anyway, so this
+ * covers every real case without needing a full recursive AST walk.
+ *
+ * @param filePath - Absolute path to the source file to parse.
+ * @param aliasConfig - tsconfig path-alias settings to resolve bare specifiers against, if any.
+ */
 export function analyzeModule(filePath: string, aliasConfig: AliasConfig | null = null): ModuleNode {
   const sourceText = fs.readFileSync(filePath, "utf8");
+  // `setParentNodes: true` (the 4th argument) is required for node.parent to be populated,
+  // which ts.canHaveModifiers/getModifiers rely on internally.
   const sourceFile = ts.createSourceFile(
     filePath,
     sourceText,
@@ -132,6 +159,8 @@ export function analyzeModule(filePath: string, aliasConfig: AliasConfig | null 
     } else if (ts.isExportDeclaration(node)) {
       exports.push(...parseExportDeclaration(node, filePath, aliasConfig));
     } else if (ts.isExportAssignment(node)) {
+      // export default <expression>; (as opposed to `export default function/class`,
+      // which is caught by the hasModifier branch below since those are declarations.)
       exports.push({ name: "default", isTypeOnly: false });
     } else if (hasModifier(node, ts.SyntaxKind.ExportKeyword)) {
       exports.push(...parseExportedDeclaration(node));

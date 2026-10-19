@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 import { generateDocs, generateFocus, generateSummary, mapProject } from "./index.js";
 
+// json/markdown dump the whole project; summary/focus exist to answer narrower
+// questions without paying for the full per-module output (see generateDocs.ts).
 type Mode = "json" | "markdown" | "summary" | "focus";
 
 const args = process.argv.slice(2);
@@ -11,6 +13,7 @@ let focusTarget: string | undefined;
 for (let i = 0; i < args.length; i++) {
   const arg = args[i];
   if (arg === "--focus") {
+    // Consumes the next arg as --focus's value, so it isn't also treated as positional.
     focusTarget = args[++i];
     mode = "focus";
   } else if (arg === "--summary") {
@@ -22,6 +25,7 @@ for (let i = 0; i < args.length; i++) {
   }
 }
 
+// Only positional argument: the directory to scan. Defaults to the current directory.
 const rootDir = positional[0] ?? ".";
 const projectMap = mapProject(rootDir);
 

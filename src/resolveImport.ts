@@ -50,6 +50,14 @@ function matchAliasTargets(specifier: string, paths: Record<string, string[]>): 
   return best?.targets ?? null;
 }
 
+/**
+ * Resolves an import specifier to an absolute file path, or `null` if it's external
+ * (an npm package) or can't be matched to a file on disk.
+ *
+ * @param specifier - The specifier as written in the source, e.g. `"./foo.js"`, `"@/bar"`, `"zod"`.
+ * @param fromFile - Absolute path of the file containing the import, used to resolve relative specifiers.
+ * @param aliasConfig - tsconfig path-alias settings from {@link loadAliasConfig}, if any.
+ */
 export function resolveImport(specifier: string, fromFile: string, aliasConfig?: AliasConfig | null): string | null {
   if (specifier.startsWith(".")) {
     // NodeNext ESM resolution requires relative imports to reference the compiled ".js"
@@ -59,6 +67,8 @@ export function resolveImport(specifier: string, fromFile: string, aliasConfig?:
     return resolveWithSuffixes(resolvedBase);
   }
 
+  // Not relative: it's either a path alias or a genuine external package. Try every
+  // candidate target in order and take the first one that exists on disk.
   if (aliasConfig) {
     const targets = matchAliasTargets(specifier, aliasConfig.paths);
     if (targets) {

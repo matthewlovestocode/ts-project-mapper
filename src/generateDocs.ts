@@ -30,6 +30,11 @@ function formatImport(imp: ImportInfo, rootDir: string): string {
   return `- ${namesLabel} from ${target}${typeLabel}`;
 }
 
+/**
+ * Every module that depends on `filePath`, whether directly (`import ... from`) or
+ * via a barrel re-export (`export ... from`). Both count as "nothing else would work
+ * if this file were deleted," which is what entry-point detection and "Used by" care about.
+ */
 function findInternalDependents(projectMap: ProjectMap, filePath: string): ModuleNode[] {
   return projectMap.modules.filter(
     (module) =>
@@ -48,12 +53,22 @@ function collectExternalSpecifiers(modules: ModuleNode[]): Set<string> {
   return specifiers;
 }
 
+/**
+ * Modules nothing else in the project imports or re-exports. Not necessarily "exported
+ * API" — a module with zero exports (an executable entry point, a test file) still
+ * qualifies, since the defining trait is having no internal dependents.
+ */
 function findEntryPoints(projectMap: ProjectMap): ModuleNode[] {
   return projectMap.modules.filter(
     (module) => findInternalDependents(projectMap, module.filePath).length === 0,
   );
 }
 
+/**
+ * Looks up a module by a path as a user would type it on the CLI — relative to the
+ * current directory or to the project root, with or without an extension — rather
+ * than requiring the exact absolute path stored in ModuleNode.filePath.
+ */
 function findModuleByPath(projectMap: ProjectMap, inputPath: string): ModuleNode | undefined {
   const bases = [path.resolve(inputPath), path.resolve(projectMap.rootDir, inputPath)];
   const suffixes = ["", ".ts", ".tsx", "/index.ts", "/index.tsx"];
