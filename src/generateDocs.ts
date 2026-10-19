@@ -59,13 +59,13 @@ export function generateDocs(projectMap: ProjectMap): string {
   }
 
   const entryPoints = modules.filter(
-    (module) => module.exports.length > 0 && findInternalDependents(projectMap, module.filePath).length === 0,
+    (module) => findInternalDependents(projectMap, module.filePath).length === 0,
   );
 
   if (entryPoints.length > 0) {
     lines.push("## Likely Entry Points", "");
     lines.push(
-      "_Modules with exports that nothing else in the project imports — likely public API surfaces or executables._",
+      "_Modules that nothing else in the project imports — public API surfaces, executables, or tests._",
       "",
     );
     for (const module of entryPoints) {
