@@ -49,6 +49,7 @@ export function findInternalDependents(projectMap: ProjectMap, filePath: string)
   );
 }
 
+/** Every distinct specifier imported from outside the project (i.e. not resolved to a local file). */
 export function collectExternalSpecifiers(modules: ModuleNode[]): Set<string> {
   const specifiers = new Set<string>();
   for (const module of modules) {
