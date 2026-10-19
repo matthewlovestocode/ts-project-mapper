@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import ts from "typescript";
+import type { AliasConfig } from "./loadAliasConfig.js";
 import { resolveImport } from "./resolveImport.js";
 import type { ExportInfo, ImportInfo, ModuleNode } from "./types.js";
 
@@ -16,7 +17,11 @@ function hasModifier(node: ts.Node, kind: ts.SyntaxKind): boolean {
   return modifiers?.some((modifier) => modifier.kind === kind) ?? false;
 }
 
-function parseImportDeclaration(node: ts.ImportDeclaration, filePath: string): ImportInfo {
+function parseImportDeclaration(
+  node: ts.ImportDeclaration,
+  filePath: string,
+  aliasConfig: AliasConfig | null,
+): ImportInfo {
   const specifier = (node.moduleSpecifier as ts.StringLiteral).text;
   const isTypeOnly = node.importClause?.isTypeOnly ?? false;
 
@@ -40,7 +45,7 @@ function parseImportDeclaration(node: ts.ImportDeclaration, filePath: string): I
 
   return {
     specifier,
-    resolvedPath: resolveImport(specifier, filePath),
+    resolvedPath: resolveImport(specifier, filePath, aliasConfig),
     isTypeOnly,
     defaultImport,
     namespaceImport,
@@ -48,11 +53,15 @@ function parseImportDeclaration(node: ts.ImportDeclaration, filePath: string): I
   };
 }
 
-function parseExportDeclaration(node: ts.ExportDeclaration, filePath: string): ExportInfo[] {
+function parseExportDeclaration(
+  node: ts.ExportDeclaration,
+  filePath: string,
+  aliasConfig: AliasConfig | null,
+): ExportInfo[] {
   const reExportFrom = node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier)
     ? node.moduleSpecifier.text
     : undefined;
-  const reExportResolvedPath = reExportFrom ? resolveImport(reExportFrom, filePath) : undefined;
+  const reExportResolvedPath = reExportFrom ? resolveImport(reExportFrom, filePath, aliasConfig) : undefined;
   const isTypeOnly = node.isTypeOnly;
 
   if (!node.exportClause) {
@@ -104,7 +113,7 @@ function parseExportedDeclaration(node: ts.Node): ExportInfo[] {
   return [];
 }
 
-export function analyzeModule(filePath: string): ModuleNode {
+export function analyzeModule(filePath: string, aliasConfig: AliasConfig | null = null): ModuleNode {
   const sourceText = fs.readFileSync(filePath, "utf8");
   const sourceFile = ts.createSourceFile(
     filePath,
@@ -119,9 +128,9 @@ export function analyzeModule(filePath: string): ModuleNode {
 
   sourceFile.forEachChild((node) => {
     if (ts.isImportDeclaration(node)) {
-      imports.push(parseImportDeclaration(node, filePath));
+      imports.push(parseImportDeclaration(node, filePath, aliasConfig));
     } else if (ts.isExportDeclaration(node)) {
-      exports.push(...parseExportDeclaration(node, filePath));
+      exports.push(...parseExportDeclaration(node, filePath, aliasConfig));
     } else if (ts.isExportAssignment(node)) {
       exports.push({ name: "default", isTypeOnly: false });
     } else if (hasModifier(node, ts.SyntaxKind.ExportKeyword)) {

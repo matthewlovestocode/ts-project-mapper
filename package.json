@@ -25,7 +25,8 @@
     "build": "tsc && chmod +x dist/cli.js",
     "dev": "tsx src/cli.ts",
     "start": "node dist/cli.js",
-    "prepublishOnly": "npm run build"
+    "test": "node --import tsx --test src/*.test.ts",
+    "prepublishOnly": "npm run build && npm test"
   },
   "dependencies": {
     "typescript": "^5.7.2"
