@@ -1,87 +1,14 @@
-import path from "node:path";
-import type { ExportInfo, ImportInfo, ModuleNode, ProjectMap } from "./types.js";
-
-function relativePath(rootDir: string, filePath: string): string {
-  return path.relative(rootDir, filePath).split(path.sep).join("/");
-}
-
-function formatExport(exp: ExportInfo): string {
-  const suffix = exp.isTypeOnly ? " (type)" : "";
-  const via = exp.reExportFrom ? ` ← re-exported from \`${exp.reExportFrom}\`` : "";
-  return `\`${exp.name}\`${suffix}${via}`;
-}
-
-function importedNames(imp: ImportInfo): string[] {
-  return [
-    imp.defaultImport ? `default as ${imp.defaultImport}` : null,
-    imp.namespaceImport ? `* as ${imp.namespaceImport}` : null,
-    ...imp.namedImports,
-  ].filter((name): name is string => name !== null);
-}
-
-function formatImport(imp: ImportInfo, rootDir: string): string {
-  const names = importedNames(imp);
-  const namesLabel = names.length > 0 ? names.join(", ") : "(side-effect only)";
-  const target = imp.resolvedPath
-    ? `\`${relativePath(rootDir, imp.resolvedPath)}\``
-    : `\`${imp.specifier}\` (external)`;
-  const typeLabel = imp.isTypeOnly ? " [type-only]" : "";
-
-  return `- ${namesLabel} from ${target}${typeLabel}`;
-}
-
-/**
- * Every module that depends on `filePath`, whether directly (`import ... from`) or
- * via a barrel re-export (`export ... from`). Both count as "nothing else would work
- * if this file were deleted," which is what entry-point detection and "Used by" care about.
- */
-function findInternalDependents(projectMap: ProjectMap, filePath: string): ModuleNode[] {
-  return projectMap.modules.filter(
-    (module) =>
-      module.imports.some((imp) => imp.resolvedPath === filePath) ||
-      module.exports.some((exp) => exp.reExportResolvedPath === filePath),
-  );
-}
-
-function collectExternalSpecifiers(modules: ModuleNode[]): Set<string> {
-  const specifiers = new Set<string>();
-  for (const module of modules) {
-    for (const imp of module.imports) {
-      if (imp.resolvedPath === null) specifiers.add(imp.specifier);
-    }
-  }
-  return specifiers;
-}
-
-/**
- * Modules nothing else in the project imports or re-exports. Not necessarily "exported
- * API" — a module with zero exports (an executable entry point, a test file) still
- * qualifies, since the defining trait is having no internal dependents.
- */
-function findEntryPoints(projectMap: ProjectMap): ModuleNode[] {
-  return projectMap.modules.filter(
-    (module) => findInternalDependents(projectMap, module.filePath).length === 0,
-  );
-}
-
-/**
- * Looks up a module by a path as a user would type it on the CLI — relative to the
- * current directory or to the project root, with or without an extension — rather
- * than requiring the exact absolute path stored in ModuleNode.filePath.
- */
-function findModuleByPath(projectMap: ProjectMap, inputPath: string): ModuleNode | undefined {
-  const bases = [path.resolve(inputPath), path.resolve(projectMap.rootDir, inputPath)];
-  const suffixes = ["", ".ts", ".tsx", "/index.ts", "/index.tsx"];
-
-  for (const base of bases) {
-    for (const suffix of suffixes) {
-      const match = projectMap.modules.find((module) => module.filePath === base + suffix);
-      if (match) return match;
-    }
-  }
-
-  return undefined;
-}
+import type { ExportInfo, ImportInfo, ProjectMap } from "./types.js";
+import {
+  collectExternalSpecifiers,
+  findEntryPoints,
+  findInternalDependents,
+  findModuleByPath,
+  formatExport,
+  formatImport,
+  importedNames,
+  relativePath,
+} from "./graphUtils.js";
 
 /**
  * Full project map: external deps, entry points, and every module's exports/imports/dependents.
@@ -153,37 +80,56 @@ export function generateDocs(projectMap: ProjectMap): string {
   return lines.join("\n");
 }
 
+/** Plain-data shape behind generateSummary(), for callers that want structured output instead of markdown. */
+export interface SummaryData {
+  rootDir: string;
+  moduleCount: number;
+  externalDependencies: string[];
+  /** Relative paths of modules nothing else in the project imports or re-exports. */
+  entryPoints: string[];
+}
+
+/** Builds the {@link SummaryData} behind generateSummary(). */
+export function buildSummaryData(projectMap: ProjectMap): SummaryData {
+  const { rootDir, modules } = projectMap;
+
+  return {
+    rootDir,
+    moduleCount: modules.length,
+    externalDependencies: [...collectExternalSpecifiers(modules)].sort(),
+    entryPoints: findEntryPoints(projectMap).map((module) => relativePath(rootDir, module.filePath)),
+  };
+}
+
 /**
  * Cheap, bounded-size orientation: module count, external deps, and likely entry points —
  * no per-module dump. Meant to be the first call against an unfamiliar project, before
  * deciding which modules are worth a generateFocus() or a direct file read.
  */
 export function generateSummary(projectMap: ProjectMap): string {
-  const { rootDir, modules } = projectMap;
+  const data = buildSummaryData(projectMap);
   const lines: string[] = [];
 
   lines.push("# Project Summary", "");
-  lines.push(`Root: \`${rootDir}\``, "");
-  lines.push(`${modules.length} module${modules.length === 1 ? "" : "s"} analyzed.`, "");
+  lines.push(`Root: \`${data.rootDir}\``, "");
+  lines.push(`${data.moduleCount} module${data.moduleCount === 1 ? "" : "s"} analyzed.`, "");
 
-  const externalSpecifiers = collectExternalSpecifiers(modules);
-  if (externalSpecifiers.size > 0) {
+  if (data.externalDependencies.length > 0) {
     lines.push("## External Dependencies", "");
-    for (const specifier of [...externalSpecifiers].sort()) {
+    for (const specifier of data.externalDependencies) {
       lines.push(`- \`${specifier}\``);
     }
     lines.push("");
   }
 
-  const entryPoints = findEntryPoints(projectMap);
-  if (entryPoints.length > 0) {
+  if (data.entryPoints.length > 0) {
     lines.push("## Likely Entry Points", "");
     lines.push(
       "_Modules that nothing else in the project imports — public API surfaces, executables, or tests._",
       "",
     );
-    for (const module of entryPoints) {
-      lines.push(`- \`${relativePath(rootDir, module.filePath)}\``);
+    for (const entryPoint of data.entryPoints) {
+      lines.push(`- \`${entryPoint}\``);
     }
     lines.push("");
   }
@@ -196,48 +142,80 @@ export function generateSummary(projectMap: ProjectMap): string {
   return lines.join("\n");
 }
 
+/** One module that depends on the focused module, and what it binds from it. */
+export interface FocusDependent {
+  filePath: string;
+  relativePath: string;
+  /** The local names this dependent binds from the focused module's imports/exports. */
+  importedNames: string[];
+}
+
+/** Plain-data shape behind generateFocus(), for callers that want structured output instead of markdown. */
+export interface FocusData {
+  filePath: string;
+  relativePath: string;
+  exports: ExportInfo[];
+  imports: ImportInfo[];
+  dependents: FocusDependent[];
+}
+
+/** Builds {@link FocusData} for the module matching `targetPath`, or `null` if none matches. */
+export function buildFocusData(projectMap: ProjectMap, targetPath: string): FocusData | null {
+  const module = findModuleByPath(projectMap, targetPath);
+  if (!module) return null;
+
+  const { rootDir } = projectMap;
+  const dependents = findInternalDependents(projectMap, module.filePath).map((dependent) => ({
+    filePath: dependent.filePath,
+    relativePath: relativePath(rootDir, dependent.filePath),
+    importedNames: dependent.imports
+      .filter((imp) => imp.resolvedPath === module.filePath)
+      .flatMap(importedNames),
+  }));
+
+  return {
+    filePath: module.filePath,
+    relativePath: relativePath(rootDir, module.filePath),
+    exports: module.exports,
+    imports: module.imports,
+    dependents,
+  };
+}
+
 /**
  * Targeted view of a single module: its own exports/imports, plus every module that depends
  * on it and which specific names each pulls in. Resolves `targetPath` against both the cwd
  * and the project's rootDir, with the same extension fallbacks as internal import resolution.
  */
 export function generateFocus(projectMap: ProjectMap, targetPath: string): string {
-  const { rootDir } = projectMap;
-  const module = findModuleByPath(projectMap, targetPath);
-
-  if (!module) {
+  const data = buildFocusData(projectMap, targetPath);
+  if (!data) {
     return `No module found matching \`${targetPath}\`.`;
   }
 
-  const relPath = relativePath(rootDir, module.filePath);
   const lines: string[] = [];
-
-  lines.push(`# Focus: \`${relPath}\``, "");
+  lines.push(`# Focus: \`${data.relativePath}\``, "");
 
   lines.push(
-    module.exports.length > 0
-      ? `**Exports:** ${module.exports.map(formatExport).join(", ")}`
+    data.exports.length > 0
+      ? `**Exports:** ${data.exports.map(formatExport).join(", ")}`
       : "**Exports:** _none_",
     "",
   );
 
-  if (module.imports.length > 0) {
+  if (data.imports.length > 0) {
     lines.push("**Imports:**", "");
-    for (const imp of module.imports) {
-      lines.push(formatImport(imp, rootDir));
+    for (const imp of data.imports) {
+      lines.push(formatImport(imp, projectMap.rootDir));
     }
     lines.push("");
   }
 
-  const dependents = findInternalDependents(projectMap, module.filePath);
-  if (dependents.length > 0) {
+  if (data.dependents.length > 0) {
     lines.push("**Used by:**", "");
-    for (const dependent of dependents) {
-      const names = dependent.imports
-        .filter((imp) => imp.resolvedPath === module.filePath)
-        .flatMap(importedNames);
-      const label = names.length > 0 ? ` (${names.join(", ")})` : "";
-      lines.push(`- \`${relativePath(rootDir, dependent.filePath)}\`${label}`);
+    for (const dependent of data.dependents) {
+      const label = dependent.importedNames.length > 0 ? ` (${dependent.importedNames.join(", ")})` : "";
+      lines.push(`- \`${dependent.relativePath}\`${label}`);
     }
     lines.push("");
   } else {

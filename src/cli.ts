@@ -1,28 +1,59 @@
 #!/usr/bin/env node
-import { generateDocs, generateFocus, generateGraph, generateSummary, mapProject } from "./index.js";
+import {
+  buildCycleData,
+  buildFindData,
+  buildFocusData,
+  buildImpactData,
+  buildSummaryData,
+  buildUnusedData,
+  generateCycles,
+  generateDocs,
+  generateFind,
+  generateFocus,
+  generateGraph,
+  generateImpact,
+  generateSummary,
+  generateUnused,
+  mapProject,
+} from "./index.js";
 
 // json/markdown/graph each dump the whole project (as data, prose, or a diagram,
-// respectively); summary/focus exist to answer narrower questions without paying for
-// the full per-module output (see generateDocs.ts).
-type Mode = "json" | "markdown" | "summary" | "focus" | "graph";
+// respectively); the rest answer narrower questions without paying for the full
+// per-module output (see generateDocs.ts).
+type Mode = "json" | "markdown" | "summary" | "focus" | "graph" | "find" | "impact" | "cycles" | "unused";
 
 const args = process.argv.slice(2);
 const positional: string[] = [];
 let mode: Mode = "json";
+let asJson = false;
 let focusTarget: string | undefined;
+let findQuery: string | undefined;
+let impactTarget: string | undefined;
 
 for (let i = 0; i < args.length; i++) {
   const arg = args[i];
   if (arg === "--focus") {
-    // Consumes the next arg as --focus's value, so it isn't also treated as positional.
+    // Consumes the next arg as the flag's value, so it isn't also treated as positional.
     focusTarget = args[++i];
     mode = "focus";
+  } else if (arg === "--find") {
+    findQuery = args[++i];
+    mode = "find";
+  } else if (arg === "--impact") {
+    impactTarget = args[++i];
+    mode = "impact";
   } else if (arg === "--summary") {
     mode = "summary";
+  } else if (arg === "--cycles") {
+    mode = "cycles";
+  } else if (arg === "--unused") {
+    mode = "unused";
   } else if (arg === "--markdown" || arg === "--format=markdown") {
     mode = "markdown";
   } else if (arg === "--graph") {
     mode = "graph";
+  } else if (arg === "--json") {
+    asJson = true;
   } else if (!arg.startsWith("--")) {
     positional.push(arg);
   }
@@ -32,16 +63,44 @@ for (let i = 0; i < args.length; i++) {
 const rootDir = positional[0] ?? ".";
 const projectMap = mapProject(rootDir);
 
+function requireArg(value: string | undefined, flag: string): string {
+  if (!value) {
+    console.error(`${flag} requires a value`);
+    // process.exit()'s `never` return type is what lets TS narrow `value` to
+    // `string` below, without needing an explicit return/throw in this branch.
+    process.exit(1);
+  }
+  return value;
+}
+
 switch (mode) {
   case "summary":
-    console.log(generateSummary(projectMap));
+    console.log(asJson ? JSON.stringify(buildSummaryData(projectMap), null, 2) : generateSummary(projectMap));
     break;
-  case "focus":
-    if (!focusTarget) {
-      console.error("--focus requires a file path");
-      process.exit(1);
-    }
-    console.log(generateFocus(projectMap, focusTarget));
+  case "focus": {
+    const target = requireArg(focusTarget, "--focus");
+    console.log(
+      asJson ? JSON.stringify(buildFocusData(projectMap, target), null, 2) : generateFocus(projectMap, target),
+    );
+    break;
+  }
+  case "find": {
+    const query = requireArg(findQuery, "--find");
+    console.log(asJson ? JSON.stringify(buildFindData(projectMap, query), null, 2) : generateFind(projectMap, query));
+    break;
+  }
+  case "impact": {
+    const target = requireArg(impactTarget, "--impact");
+    console.log(
+      asJson ? JSON.stringify(buildImpactData(projectMap, target), null, 2) : generateImpact(projectMap, target),
+    );
+    break;
+  }
+  case "cycles":
+    console.log(asJson ? JSON.stringify(buildCycleData(projectMap), null, 2) : generateCycles(projectMap));
+    break;
+  case "unused":
+    console.log(asJson ? JSON.stringify(buildUnusedData(projectMap), null, 2) : generateUnused(projectMap));
     break;
   case "markdown":
     console.log(generateDocs(projectMap));

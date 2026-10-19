@@ -1,9 +1,5 @@
-import path from "node:path";
+import { relativePath } from "./graphUtils.js";
 import type { ProjectMap } from "./types.js";
-
-function relativePath(rootDir: string, filePath: string): string {
-  return path.relative(rootDir, filePath).split(path.sep).join("/");
-}
 
 /**
  * Renders the project's internal dependency graph as a Mermaid flowchart, fenced in a

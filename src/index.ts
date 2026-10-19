@@ -5,8 +5,17 @@ import { loadAliasConfig } from "./loadAliasConfig.js";
 import type { ProjectMap } from "./types.js";
 
 export * from "./types.js";
-export { generateDocs, generateFocus, generateSummary } from "./generateDocs.js";
+export { generateDocs, generateFocus, generateSummary, buildSummaryData, buildFocusData } from "./generateDocs.js";
+export type { SummaryData, FocusData, FocusDependent } from "./generateDocs.js";
 export { generateGraph } from "./generateGraph.js";
+export { generateFind, buildFindData } from "./generateFind.js";
+export type { FindData, FindDefinition, FindUsage } from "./generateFind.js";
+export { generateImpact, buildImpactData } from "./generateImpact.js";
+export type { ImpactData, ImpactedModule } from "./generateImpact.js";
+export { generateCycles, buildCycleData } from "./generateCycles.js";
+export type { CycleData } from "./generateCycles.js";
+export { generateUnused, buildUnusedData } from "./generateUnused.js";
+export type { UnusedData, UnusedExport } from "./generateUnused.js";
 export { loadAliasConfig } from "./loadAliasConfig.js";
 export type { AliasConfig } from "./loadAliasConfig.js";
 
