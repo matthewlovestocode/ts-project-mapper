@@ -1,9 +1,9 @@
 #!/usr/bin/env node
-import { generateDocs, generateFocus, generateSummary, mapProject } from "./index.js";
+import { generateDocs, generateFocus, generateGraph, generateSummary, mapProject } from "./index.js";
 
 // json/markdown dump the whole project; summary/focus exist to answer narrower
 // questions without paying for the full per-module output (see generateDocs.ts).
-type Mode = "json" | "markdown" | "summary" | "focus";
+type Mode = "json" | "markdown" | "summary" | "focus" | "graph";
 
 const args = process.argv.slice(2);
 const positional: string[] = [];
@@ -20,6 +20,8 @@ for (let i = 0; i < args.length; i++) {
     mode = "summary";
   } else if (arg === "--markdown" || arg === "--format=markdown") {
     mode = "markdown";
+  } else if (arg === "--graph") {
+    mode = "graph";
   } else if (!arg.startsWith("--")) {
     positional.push(arg);
   }
@@ -42,6 +44,9 @@ switch (mode) {
     break;
   case "markdown":
     console.log(generateDocs(projectMap));
+    break;
+  case "graph":
+    console.log(generateGraph(projectMap));
     break;
   default:
     console.log(JSON.stringify(projectMap, null, 2));

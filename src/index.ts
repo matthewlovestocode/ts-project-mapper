@@ -6,6 +6,7 @@ import type { ProjectMap } from "./types.js";
 
 export * from "./types.js";
 export { generateDocs, generateFocus, generateSummary } from "./generateDocs.js";
+export { generateGraph } from "./generateGraph.js";
 export { loadAliasConfig } from "./loadAliasConfig.js";
 export type { AliasConfig } from "./loadAliasConfig.js";
 
