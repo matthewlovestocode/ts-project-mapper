@@ -12,15 +12,27 @@ import {
   generateFocus,
   generateGraph,
   generateImpact,
+  generateMissingDocs,
   generateSummary,
   generateUnused,
+  buildMissingDocsData,
   mapProject,
 } from "./index.js";
 
 // json/markdown/graph each dump the whole project (as data, prose, or a diagram,
 // respectively); the rest answer narrower questions without paying for the full
 // per-module output (see generateDocs.ts).
-type Mode = "json" | "markdown" | "summary" | "focus" | "graph" | "find" | "impact" | "cycles" | "unused";
+type Mode =
+  | "json"
+  | "markdown"
+  | "summary"
+  | "focus"
+  | "graph"
+  | "find"
+  | "impact"
+  | "cycles"
+  | "unused"
+  | "missing-docs";
 
 const args = process.argv.slice(2);
 const positional: string[] = [];
@@ -48,6 +60,8 @@ for (let i = 0; i < args.length; i++) {
     mode = "cycles";
   } else if (arg === "--unused") {
     mode = "unused";
+  } else if (arg === "--missing-docs") {
+    mode = "missing-docs";
   } else if (arg === "--markdown" || arg === "--format=markdown") {
     mode = "markdown";
   } else if (arg === "--graph") {
@@ -101,6 +115,11 @@ switch (mode) {
     break;
   case "unused":
     console.log(asJson ? JSON.stringify(buildUnusedData(projectMap), null, 2) : generateUnused(projectMap));
+    break;
+  case "missing-docs":
+    console.log(
+      asJson ? JSON.stringify(buildMissingDocsData(projectMap), null, 2) : generateMissingDocs(projectMap),
+    );
     break;
   case "markdown":
     console.log(generateDocs(projectMap));

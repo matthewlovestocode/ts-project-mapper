@@ -1,6 +1,7 @@
 import { relativePath } from "./graphUtils.js";
 import type { ProjectMap } from "./types.js";
 
+/** Plain-data shape behind generateCycles(). */
 export interface CycleData {
   /** Each entry is one group of mutually-reachable modules (a strongly connected component), as relative paths. */
   cycles: string[][];

@@ -1,6 +1,6 @@
 {
   "name": "@matthewlovestocode/ts-project-mapper",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "Maps a TypeScript project's imports/exports into a graph and generates AI-agent-friendly documentation.",
   "license": "MIT",
   "repository": {

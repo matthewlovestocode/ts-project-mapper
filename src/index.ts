@@ -16,6 +16,8 @@ export { generateCycles, buildCycleData } from "./generateCycles.js";
 export type { CycleData } from "./generateCycles.js";
 export { generateUnused, buildUnusedData } from "./generateUnused.js";
 export type { UnusedData, UnusedExport } from "./generateUnused.js";
+export { generateMissingDocs, buildMissingDocsData } from "./generateMissingDocs.js";
+export type { MissingDocsData, MissingDoc } from "./generateMissingDocs.js";
 export { loadAliasConfig } from "./loadAliasConfig.js";
 export type { AliasConfig } from "./loadAliasConfig.js";
 

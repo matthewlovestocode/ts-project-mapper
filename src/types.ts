@@ -29,6 +29,13 @@ export interface ExportInfo {
   reExportFrom?: string;
   /** Resolved path for `reExportFrom`, following the same rules as {@link ImportInfo.resolvedPath}. */
   reExportResolvedPath?: string | null;
+  /**
+   * Whether the declaration itself has a `/** ... *\/` JSDoc comment. Only meaningful for
+   * exports defined directly in this module (`export function foo() {}`, etc.) — `undefined`
+   * for re-exports (`export { x } from "./y"`), since the doc, if any, lives at the original
+   * definition in `y`, not here.
+   */
+  hasJsDoc?: boolean;
 }
 
 /** The imports and exports found in a single source file. */

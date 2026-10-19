@@ -75,6 +75,24 @@ describe("analyzeModule exports", () => {
     assert.deepEqual(names, ["Bar", "baz", "foo"]);
   });
 
+  it("flags whether a declaration export has a JSDoc comment", () => {
+    const { exports } = writeAndAnalyze(
+      "a.ts",
+      `/** Adds two numbers. */\nexport function documented() {}\nexport function undocumented() {}\n// not jsdoc\nexport function singleLine() {}`,
+    );
+
+    const byName = new Map(exports.map((e) => [e.name, e.hasJsDoc]));
+    assert.equal(byName.get("documented"), true);
+    assert.equal(byName.get("undocumented"), false);
+    assert.equal(byName.get("singleLine"), false);
+  });
+
+  it("leaves hasJsDoc undefined on a re-export, since the doc lives at the original definition", () => {
+    const { exports } = writeAndAnalyze("a.ts", `export { x } from "./x.js";`);
+
+    assert.equal(exports[0].hasJsDoc, undefined);
+  });
+
   it("marks interfaces and type aliases as type-only exports", () => {
     const { exports } = writeAndAnalyze(
       "a.ts",
@@ -90,7 +108,7 @@ describe("analyzeModule exports", () => {
   it("records a default export via export assignment", () => {
     const { exports } = writeAndAnalyze("a.ts", `export default function foo() {}`);
 
-    assert.deepEqual(exports, [{ name: "default", isTypeOnly: false }]);
+    assert.deepEqual(exports, [{ name: "default", isTypeOnly: false, hasJsDoc: false }]);
   });
 
   it("records named re-exports and resolves the source file", () => {

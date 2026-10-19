@@ -98,6 +98,11 @@ function namesFromBindingName(bindingName: ts.BindingName): string[] {
   return [];
 }
 
+/** True if `node` has a `/** ... *\/` JSDoc comment attached. */
+function hasJsDocComment(node: ts.Node): boolean {
+  return ts.getJSDocCommentsAndTags(node).length > 0;
+}
+
 /**
  * Parses a top-level declaration that carries its own `export` modifier directly
  * (`export function foo() {}`, `export const x = 1`, `export interface Foo {}`, ...),
@@ -105,24 +110,26 @@ function namesFromBindingName(bindingName: ts.BindingName): string[] {
  */
 function parseExportedDeclaration(node: ts.Node): ExportInfo[] {
   const isDefault = hasModifier(node, ts.SyntaxKind.DefaultKeyword);
+  const hasJsDoc = hasJsDocComment(node);
 
   if (ts.isVariableStatement(node)) {
-    // export const a = 1, b = 2;
+    // export const a = 1, b = 2; — JSDoc attaches to the whole statement, so every
+    // declared name in it shares the same hasJsDoc value.
     return node.declarationList.declarations.flatMap((declaration) =>
-      namesFromBindingName(declaration.name).map((name) => ({ name, isTypeOnly: false })),
+      namesFromBindingName(declaration.name).map((name) => ({ name, isTypeOnly: false, hasJsDoc })),
     );
   }
 
   if (ts.isFunctionDeclaration(node) || ts.isClassDeclaration(node)) {
     const name = isDefault ? "default" : node.name?.text;
-    return name ? [{ name, isTypeOnly: false }] : [];
+    return name ? [{ name, isTypeOnly: false, hasJsDoc }] : [];
   }
 
   if (ts.isInterfaceDeclaration(node) || ts.isTypeAliasDeclaration(node) || ts.isEnumDeclaration(node)) {
     // Interfaces and type aliases are erased at runtime, so they're marked type-only;
     // enums are real runtime values, so they're not.
     const name = isDefault ? "default" : node.name.text;
-    return [{ name, isTypeOnly: ts.isEnumDeclaration(node) ? false : true }];
+    return [{ name, isTypeOnly: ts.isEnumDeclaration(node) ? false : true, hasJsDoc }];
   }
 
   return [];
@@ -161,7 +168,7 @@ export function analyzeModule(filePath: string, aliasConfig: AliasConfig | null 
     } else if (ts.isExportAssignment(node)) {
       // export default <expression>; (as opposed to `export default function/class`,
       // which is caught by the hasModifier branch below since those are declarations.)
-      exports.push({ name: "default", isTypeOnly: false });
+      exports.push({ name: "default", isTypeOnly: false, hasJsDoc: hasJsDocComment(node) });
     } else if (hasModifier(node, ts.SyntaxKind.ExportKeyword)) {
       exports.push(...parseExportedDeclaration(node));
     }

@@ -31,10 +31,11 @@ npx ts-project-mapper <dir> [mode] [--json]
 | `--impact <file>` | The full transitive "blast radius" of a module: everything that depends on it, directly or through a chain of dependents |
 | `--cycles` | Circular dependencies — groups of modules that (transitively) import each other |
 | `--unused` | Exports nothing in the scan imports or re-exports — a heuristic for dead code, with real caveats (see below) |
+| `--missing-docs` | Exported declarations with no JSDoc comment — a punch list for an agent to fix, not something this tool writes itself |
 
-Add `--json` to any of `--summary`, `--focus`, `--find`, `--impact`, `--cycles`, or `--unused` to
-get the underlying structured data instead of a markdown rendering — useful when the output
-is consumed by code rather than read directly.
+Add `--json` to any of `--summary`, `--focus`, `--find`, `--impact`, `--cycles`, `--unused`, or
+`--missing-docs` to get the underlying structured data instead of a markdown rendering —
+useful when the output is consumed by code rather than read directly.
 
 ```sh
 # orient on an unfamiliar project
@@ -66,6 +67,7 @@ import {
   generateImpact,
   generateCycles,
   generateUnused,
+  generateMissingDocs,
 } from "@matthewlovestocode/ts-project-mapper";
 
 const projectMap = mapProject("./src");
@@ -78,11 +80,13 @@ console.log(generateFind(projectMap, "handleConnection"));
 console.log(generateImpact(projectMap, "./src/db/parcels.ts"));
 console.log(generateCycles(projectMap));
 console.log(generateUnused(projectMap));
+console.log(generateMissingDocs(projectMap));
 ```
 
 Each `generateX()` markdown renderer has a matching `buildXData()` that returns the plain
 data object instead (`buildSummaryData`, `buildFocusData`, `buildFindData`, `buildImpactData`,
-`buildCycleData`, `buildUnusedData`) — what the CLI's `--json` flag uses under the hood.
+`buildCycleData`, `buildUnusedData`, `buildMissingDocsData`) — what the CLI's `--json` flag
+uses under the hood.
 
 `mapProject(rootDir)` returns a `ProjectMap`:
 
