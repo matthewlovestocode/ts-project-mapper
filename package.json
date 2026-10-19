@@ -22,7 +22,7 @@
     "node": ">=18"
   },
   "scripts": {
-    "build": "tsc && chmod +x dist/cli.js",
+    "build": "tsc -p tsconfig.build.json && chmod +x dist/cli.js",
     "dev": "tsx src/cli.ts",
     "start": "node dist/cli.js",
     "test": "node --import tsx --test src/*.test.ts",
