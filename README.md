@@ -1,8 +1,8 @@
 # ts-project-mapper
 
 Maps a TypeScript project's imports and exports into a dependency graph, and generates
-documentation from it — sized for either a human skimming a repo or an AI agent orienting
-itself before diving into source files.
+documentation and diagrams from it — sized for either a human skimming a repo or an AI
+agent orienting itself before diving into source files.
 
 Parses source with the TypeScript Compiler API, resolves relative imports and tsconfig
 `paths` aliases to real files on disk, and distinguishes runtime imports/exports from
@@ -17,7 +17,7 @@ npm install @matthewlovestocode/ts-project-mapper
 ## CLI
 
 ```sh
-npx ts-project-mapper <dir> [--summary | --focus <file> | --markdown]
+npx ts-project-mapper <dir> [--summary | --focus <file> | --markdown | --graph]
 ```
 
 | Mode | What it does |
@@ -26,6 +26,7 @@ npx ts-project-mapper <dir> [--summary | --focus <file> | --markdown]
 | `--markdown` | Full map as markdown: external deps, entry points, every module's exports/imports/dependents |
 | `--summary` | Just the overview — module count, external deps, likely entry points. Cheap, bounded size; the right first call on an unfamiliar project |
 | `--focus <file>` | One module's own exports/imports, plus every dependent and which names each imports from it |
+| `--graph` | The internal dependency graph as a fenced ` ```mermaid ` flowchart — renders inline on GitHub, VS Code's markdown preview, etc. |
 
 ```sh
 # orient on an unfamiliar project
@@ -33,18 +34,28 @@ npx ts-project-mapper src --summary
 
 # drill into one module once you know where to look
 npx ts-project-mapper src --focus src/server.ts
+
+# visualize the whole thing
+npx ts-project-mapper src --graph > graph.md
 ```
 
 ## Library
 
 ```ts
-import { mapProject, generateSummary, generateFocus, generateDocs } from "@matthewlovestocode/ts-project-mapper";
+import {
+  mapProject,
+  generateSummary,
+  generateFocus,
+  generateDocs,
+  generateGraph,
+} from "@matthewlovestocode/ts-project-mapper";
 
 const projectMap = mapProject("./src");
 
 console.log(generateSummary(projectMap));
 console.log(generateFocus(projectMap, "./src/server.ts"));
 console.log(generateDocs(projectMap)); // full dump
+console.log(generateGraph(projectMap)); // mermaid flowchart
 ```
 
 `mapProject(rootDir)` returns a `ProjectMap`:

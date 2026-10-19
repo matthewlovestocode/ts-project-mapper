@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 import { generateDocs, generateFocus, generateGraph, generateSummary, mapProject } from "./index.js";
 
-// json/markdown dump the whole project; summary/focus exist to answer narrower
-// questions without paying for the full per-module output (see generateDocs.ts).
+// json/markdown/graph each dump the whole project (as data, prose, or a diagram,
+// respectively); summary/focus exist to answer narrower questions without paying for
+// the full per-module output (see generateDocs.ts).
 type Mode = "json" | "markdown" | "summary" | "focus" | "graph";
 
 const args = process.argv.slice(2);
