@@ -30,7 +30,7 @@
     }
   },
   "bin": {
-    "ts-project-mapper": "./dist/cli.js"
+    "ts-project-mapper": "dist/cli.js"
   },
   "files": [
     "dist"
