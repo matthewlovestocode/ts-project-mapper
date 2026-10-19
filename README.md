@@ -32,10 +32,11 @@ npx ts-project-mapper <dir> [mode] [--json]
 | `--cycles` | Circular dependencies — groups of modules that (transitively) import each other |
 | `--unused` | Exports nothing in the scan imports or re-exports — a heuristic for dead code, with real caveats (see below) |
 | `--missing-docs` | Exported declarations with no JSDoc comment — a punch list for an agent to fix, not something this tool writes itself |
+| `--complexity` | Functions that are long or branchy, and files with an unusually large number of top-level declarations — a decomposition punch list |
 
-Add `--json` to any of `--summary`, `--focus`, `--find`, `--impact`, `--cycles`, `--unused`, or
-`--missing-docs` to get the underlying structured data instead of a markdown rendering —
-useful when the output is consumed by code rather than read directly.
+Add `--json` to any of `--summary`, `--focus`, `--find`, `--impact`, `--cycles`, `--unused`,
+`--missing-docs`, or `--complexity` to get the underlying structured data instead of a markdown
+rendering — useful when the output is consumed by code rather than read directly.
 
 ```sh
 # orient on an unfamiliar project
@@ -68,6 +69,7 @@ import {
   generateCycles,
   generateUnused,
   generateMissingDocs,
+  generateComplexity,
 } from "@matthewlovestocode/ts-project-mapper";
 
 const projectMap = mapProject("./src");
@@ -81,12 +83,13 @@ console.log(generateImpact(projectMap, "./src/db/parcels.ts"));
 console.log(generateCycles(projectMap));
 console.log(generateUnused(projectMap));
 console.log(generateMissingDocs(projectMap));
+console.log(generateComplexity(projectMap));
 ```
 
 Each `generateX()` markdown renderer has a matching `buildXData()` that returns the plain
 data object instead (`buildSummaryData`, `buildFocusData`, `buildFindData`, `buildImpactData`,
-`buildCycleData`, `buildUnusedData`, `buildMissingDocsData`) — what the CLI's `--json` flag
-uses under the hood.
+`buildCycleData`, `buildUnusedData`, `buildMissingDocsData`, `buildComplexityData`) — what the
+CLI's `--json` flag uses under the hood.
 
 `mapProject(rootDir)` returns a `ProjectMap`:
 
@@ -125,6 +128,16 @@ That means:
   in isolation, its own public API will look "unused" even though real consumers import it —
   scan a package's actual entry point (where its own barrel file lives), not an arbitrary
   subdirectory, for reliable results.
+
+## `--complexity`'s thresholds are starting points, not rules
+
+The defaults (50 lines, cyclomatic complexity 10, 15 top-level declarations per file) are
+reasonable starting cutoffs, not hard rules — pass a different `ComplexityThresholds` to
+`generateComplexity()`/`buildComplexityData()` to tune them for a codebase's own style.
+
+One thing to expect: a test file's `it("...", () => { ... })` callbacks often show up as long
+functions even when nothing's actually wrong — a test body with a lot of setup is normal, not
+a sign the test needs splitting the way a long production function would be.
 
 ## Development
 

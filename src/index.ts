@@ -18,6 +18,9 @@ export { generateUnused, buildUnusedData } from "./generateUnused.js";
 export type { UnusedData, UnusedExport } from "./generateUnused.js";
 export { generateMissingDocs, buildMissingDocsData } from "./generateMissingDocs.js";
 export type { MissingDocsData, MissingDoc } from "./generateMissingDocs.js";
+export { generateComplexity, buildComplexityData, DEFAULT_COMPLEXITY_THRESHOLDS } from "./generateComplexity.js";
+export type { ComplexityData, FileComplexityReport, ComplexityThresholds } from "./generateComplexity.js";
+export type { FunctionComplexity, FileComplexity } from "./analyzeComplexity.js";
 export { loadAliasConfig } from "./loadAliasConfig.js";
 export type { AliasConfig } from "./loadAliasConfig.js";
 

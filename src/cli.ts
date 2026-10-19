@@ -1,11 +1,14 @@
 #!/usr/bin/env node
 import {
+  buildComplexityData,
   buildCycleData,
   buildFindData,
   buildFocusData,
   buildImpactData,
+  buildMissingDocsData,
   buildSummaryData,
   buildUnusedData,
+  generateComplexity,
   generateCycles,
   generateDocs,
   generateFind,
@@ -15,7 +18,6 @@ import {
   generateMissingDocs,
   generateSummary,
   generateUnused,
-  buildMissingDocsData,
   mapProject,
 } from "./index.js";
 
@@ -32,7 +34,8 @@ type Mode =
   | "impact"
   | "cycles"
   | "unused"
-  | "missing-docs";
+  | "missing-docs"
+  | "complexity";
 
 const args = process.argv.slice(2);
 const positional: string[] = [];
@@ -62,6 +65,8 @@ for (let i = 0; i < args.length; i++) {
     mode = "unused";
   } else if (arg === "--missing-docs") {
     mode = "missing-docs";
+  } else if (arg === "--complexity") {
+    mode = "complexity";
   } else if (arg === "--markdown" || arg === "--format=markdown") {
     mode = "markdown";
   } else if (arg === "--graph") {
@@ -120,6 +125,9 @@ switch (mode) {
     console.log(
       asJson ? JSON.stringify(buildMissingDocsData(projectMap), null, 2) : generateMissingDocs(projectMap),
     );
+    break;
+  case "complexity":
+    console.log(asJson ? JSON.stringify(buildComplexityData(projectMap), null, 2) : generateComplexity(projectMap));
     break;
   case "markdown":
     console.log(generateDocs(projectMap));
